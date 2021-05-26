@@ -4,6 +4,21 @@
 
     </declare-styleable>
     <declare-styleable name="LineProgressView">
+        <attr name="lpv_max" format="integer" />
+        <attr name="lpv_progress" format="integer" />
+
+        <attr name="lpv_line_reached_color" format="color" />
+        <attr name="lpv_line_unreached_color" format="color" />
+        <attr name="lpv_line_height" format="dimension" />
+        <attr name="lpv_line_corner_enable" format="boolean" />
+
+        <attr name="lpv_progress_text_visibility" format="boolean" />
+        <attr name="lpv_progress_text_size" format="dimension" />
+        <attr name="lpv_progress_text_color" format="color" />
+        <attr name="lpv_progress_text_offset" format="dimension" />
+        <attr name="lpv_progress_text_prefix" format="string|reference" />
+        <attr name="lpv_progress_text_suffix" format="string|reference" />
+
 
     </declare-styleable>
 </resources>
