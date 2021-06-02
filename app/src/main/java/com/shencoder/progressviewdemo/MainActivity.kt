@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
             lpv1.setProgressTextSize(20)
             lpv1.setLineHeight(30)
         }
-//        handler.sendEmptyMessageDelayed(TIME_TAG, 1000)
+        handler.sendEmptyMessageDelayed(TIME_TAG, 1000)
     }
 
     override fun onDestroy() {

@@ -308,7 +308,7 @@ class LineProgressView @JvmOverloads constructor(
      * set progress
      * @param progress should be in [0..mMaxProgress]
      */
-    @MainThread
+    @UiThread
     fun setProgress(@IntRange(from = 0) progress: Int) {
         if (mProgress == progress) {
             return
@@ -393,6 +393,8 @@ class LineProgressView @JvmOverloads constructor(
     fun setProgressTextVisibility(isVisible: Boolean) {
         if (mProgressTextVisibility != isVisible) {
             mProgressTextVisibility = isVisible
+
+            requestLayout()
             invalidate()
         }
     }
