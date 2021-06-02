@@ -2,8 +2,10 @@ package com.shencoder.progressview
 
 import android.content.Context
 import android.graphics.*
+import android.os.Parcel
 import android.os.Parcelable
 import android.util.AttributeSet
+import android.view.AbsSavedState
 import android.view.View
 import androidx.annotation.*
 import androidx.annotation.IntRange
@@ -73,7 +75,7 @@ class LineProgressView @JvmOverloads constructor(
      * line corner
      * Default:[DEFAULT_LINE_CORNER_ENABLE]
      */
-    private var mLineCornerEnable: Boolean
+    private var mLineCornerUsed: Boolean
 
     /**
      * the visibility of progress text
@@ -108,6 +110,16 @@ class LineProgressView @JvmOverloads constructor(
     private var mProgressTextSuffix: String
 
     /**
+     * used when [mLineCornerUsed] is true
+     */
+    private val mReachedArcRectF by lazy { RectF() }
+
+    /**
+     * used when [mLineCornerUsed] is true
+     */
+    private val mUnreachedArcRectF by lazy { RectF() }
+
+    /**
      * reached area paint
      */
     private val mReachedPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -121,6 +133,8 @@ class LineProgressView @JvmOverloads constructor(
      * text paint
      */
     private val mTextPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private var mListener: OnProgressListener? = null
 
     init {
         val typedArray =
@@ -147,9 +161,9 @@ class LineProgressView @JvmOverloads constructor(
                 R.styleable.LineProgressView_lpv_line_height,
                 getDimensionPixelSize(R.dimen.lpv_default_line_height)
             )
-        mLineCornerEnable =
+        mLineCornerUsed =
             typedArray.getBoolean(
-                R.styleable.LineProgressView_lpv_line_corner_enable,
+                R.styleable.LineProgressView_lpv_line_corner_used,
                 DEFAULT_LINE_CORNER_ENABLE
             )
         mProgressTextVisibility = typedArray.getBoolean(
@@ -206,21 +220,72 @@ class LineProgressView @JvmOverloads constructor(
             return
         }
         val percentage = mProgress / mMaxProgress.toFloat()
-        if (mLineCornerEnable) {
+        if (mLineCornerUsed) {
             //draw with corner
             drawWithCorner(canvas, percentage)
         } else {
             //draw without corner
             drawWithoutCorner(canvas, percentage)
         }
+        mListener?.onProgressChanged(
+            mProgress,
+            mMaxProgress,
+            (percentage * ONE_HUNDRED_PERCENT).toInt()
+        )
     }
 
-    override fun onSaveInstanceState(): Parcelable? {
-        return super.onSaveInstanceState()
+    override fun onSaveInstanceState(): Parcelable {
+        val superState = super.onSaveInstanceState() ?: AbsSavedState.EMPTY_STATE
+        val savedState = SavedState(superState)
+        savedState.mProgress = mProgress
+        savedState.mMaxProgress = mMaxProgress
+        savedState.mLineReachedColor = mLineReachedColor
+        savedState.mLineUnreachedColor = mLineUnreachedColor
+        savedState.mLineHeight = mLineHeight
+        savedState.mLineCornerUsed = mLineCornerUsed
+        savedState.mProgressTextVisibility = mProgressTextVisibility
+        savedState.mProgressTextSize = mProgressTextSize
+        savedState.mProgressTextColor = mProgressTextColor
+        savedState.mProgressTextPrefix = mProgressTextPrefix
+        savedState.mProgressTextSuffix = mProgressTextSuffix
+        return savedState
     }
 
     override fun onRestoreInstanceState(state: Parcelable?) {
-        super.onRestoreInstanceState(state)
+        if (state is SavedState) {
+            super.onRestoreInstanceState(state.superState)
+            mProgress = state.mProgress
+            mMaxProgress = state.mMaxProgress
+            mLineReachedColor = state.mLineReachedColor
+            mLineUnreachedColor = state.mLineUnreachedColor
+            mLineHeight = state.mLineHeight
+            mLineCornerUsed = state.mLineCornerUsed
+            mProgressTextVisibility = state.mProgressTextVisibility
+            mProgressTextSize = state.mProgressTextSize
+            mProgressTextColor = state.mProgressTextColor
+            mProgressTextPrefix = state.mProgressTextPrefix
+            mProgressTextSuffix = state.mProgressTextSuffix
+
+            mReachedPaint.color = mLineReachedColor
+            mUnreachedPaint.color = mLineUnreachedColor
+            mTextPaint.textSize = mProgressTextSize.toFloat()
+            mTextPaint.color = mProgressTextColor
+
+        } else {
+            super.onRestoreInstanceState(state)
+        }
+    }
+
+    fun setOnProgressListener(listener: OnProgressListener?) {
+        mListener = listener
+    }
+
+    inline fun setOnProgressListener(crossinline listener: (current: Int, max: Int, percentage: Int) -> Unit) {
+        setOnProgressListener(object : OnProgressListener {
+            override fun onProgressChanged(current: Int, max: Int, percentage: Int) {
+                listener.invoke(current, max, percentage)
+            }
+        })
     }
 
     /**
@@ -287,6 +352,20 @@ class LineProgressView @JvmOverloads constructor(
     }
 
     fun getLineHeight() = mLineHeight
+
+    /**
+     * set line corner
+     * @param lineCornerUsed is used corner
+     */
+    @UiThread
+    fun setLineCornerUsed(lineCornerUsed: Boolean) {
+        if (mLineCornerUsed != lineCornerUsed) {
+            mLineCornerUsed = lineCornerUsed
+            invalidate()
+        }
+    }
+
+    fun getLineCornerUsed() = mLineCornerUsed
 
     /**
      * set visibility of progress text
@@ -390,41 +469,90 @@ class LineProgressView @JvmOverloads constructor(
         }
     }
 
-    private fun measureTextWidth(text: String) = mTextPaint.measureText(text)
-
     private fun drawWithCorner(canvas: Canvas, percentage: Float) {
         val realWidth = getRealWidth()
         val realHeight = getRealHeight()
-        val circleY = 0f
-
-        val drawReachedAreaEnd = getStartAfterPadding() + realWidth * percentage
-
+        val reachedWidth = realWidth * percentage
+        val middle = paddingTop + realHeight.toFloat() / 2
+        val drawAreaTop = middle - mLineHeight.toFloat() / 2
+        val drawAreBottom = drawAreaTop + mLineHeight
+        var drawReachedAreaEnd = getStartAfterPadding() + reachedWidth
         // arc radius
         val radius = mLineHeight.toFloat() / 2
+        mReachedArcRectF.set(
+            getStartAfterPadding().toFloat(),
+            middle - radius,
+            getStartAfterPadding() + radius * 2,
+            middle + radius
+        )
+        mUnreachedArcRectF.set(
+            getEndAfterPadding() - radius * 2,
+            middle - radius,
+            getEndAfterPadding().toFloat(),
+            middle + radius
+        )
 
-        val circleReachedX = 0f
-        val needDrawReachedRectangle = drawReachedAreaEnd > radius
+        val needDrawReachedRectangle = reachedWidth > radius
         val arcReachedAngle =
-            if (needDrawReachedRectangle) 180f else 180f - (radius - drawReachedAreaEnd) / radius * 180f
+            if (needDrawReachedRectangle) 180f else 180f - (radius - reachedWidth) / radius * 180f
 
+        canvas.drawArc(
+            mReachedArcRectF,
+            180f - arcReachedAngle / 2,
+            arcReachedAngle,
+            false,
+            mReachedPaint
+        )
 
-        if (needDrawReachedRectangle) {
-
-        }
-
-        val circleUnreachedX = 0f
-        val circleUnreachedY = 0f
-        val arcUnreachedAngle = 0f
-        val needDrawUnreachedRectangle = false
-
-        if (needDrawUnreachedRectangle) {
-
-        }
-
+        //draw progress text
+        var drawTextStart = drawReachedAreaEnd
+        var measureTextWidth = 0f
+        var needDrawUnreachedArea = true
         if (mProgressTextVisibility) {
+            val drawText =
+                "$mProgressTextPrefix${(percentage * ONE_HUNDRED_PERCENT).toInt()}$mProgressTextSuffix"
+            measureTextWidth = mTextPaint.measureText(drawText)
+            val baseLine = middle - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)
+            if (drawTextStart + measureTextWidth >= getEndAfterPadding()) {
+                drawTextStart = getEndAfterPadding() - measureTextWidth
+                drawReachedAreaEnd = drawTextStart
+                needDrawUnreachedArea = false
+            }
+            //draw progress text
+            canvas.drawText(drawText, drawTextStart, baseLine, mTextPaint)
+        }
+        if (needDrawReachedRectangle) {
+            canvas.drawRect(
+                getStartAfterPadding() + radius,
+                drawAreaTop,
+                drawReachedAreaEnd,
+                drawAreBottom,
+                mReachedPaint
+            )
+        }
+        if (needDrawUnreachedArea) {
+            val needDrawUnreachedRectangle =
+                getEndAfterPadding() - (drawTextStart + measureTextWidth) > radius
 
-        } else {
+            if (needDrawUnreachedRectangle) {
+                canvas.drawRect(
+                    drawTextStart + measureTextWidth,
+                    drawAreaTop,
+                    getEndAfterPadding() - radius,
+                    drawAreBottom,
+                    mUnreachedPaint
+                )
+            }
+            val arcUnreachedAngle =
+                if (needDrawUnreachedRectangle) 180f else 180f - (radius - (getEndAfterPadding() - (drawTextStart + measureTextWidth))) / radius * 180f
 
+            canvas.drawArc(
+                mUnreachedArcRectF,
+                0f - arcUnreachedAngle / 2,
+                arcUnreachedAngle,
+                false,
+                mUnreachedPaint
+            )
         }
     }
 
@@ -432,7 +560,8 @@ class LineProgressView @JvmOverloads constructor(
         val realWidth = getRealWidth()
         val realHeight = getRealHeight()
 
-        val drawAreaTop = paddingTop + (realHeight - mLineHeight).toFloat() / 2
+        val middle = paddingTop + realHeight.toFloat() / 2
+        val drawAreaTop = middle - mLineHeight.toFloat() / 2
         val drawAreBottom = drawAreaTop + mLineHeight
 
         val drawReachedAreaStart = getStartAfterPadding().toFloat()
@@ -445,9 +574,8 @@ class LineProgressView @JvmOverloads constructor(
         if (mProgressTextVisibility) {
             val drawText =
                 "$mProgressTextPrefix${(percentage * ONE_HUNDRED_PERCENT).toInt()}$mProgressTextSuffix"
-            measureTextWidth = measureTextWidth(drawText)
-            val baseLine =
-                (drawAreaTop + mLineHeight / 2) - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)
+            measureTextWidth = mTextPaint.measureText(drawText)
+            val baseLine = middle - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)
             if (drawTextStart + measureTextWidth >= getEndAfterPadding()) {
                 drawTextStart = getEndAfterPadding() - measureTextWidth
                 drawReachedAreaEnd = drawTextStart
@@ -489,15 +617,70 @@ class LineProgressView @JvmOverloads constructor(
         return width - paddingEnd
     }
 
-    private fun dp2px(dp: Float): Float {
-        val scale = resources.displayMetrics.density
-        return dp * scale + 0.5f
-    }
-
-    private fun sp2px(sp: Float): Float {
-        val scale = resources.displayMetrics.scaledDensity
-        return sp * scale
-    }
-
     private fun getDimensionPixelSize(@DimenRes id: Int) = resources.getDimensionPixelSize(id)
+
+    /**
+     * [onSaveInstanceState]
+     * [onRestoreInstanceState]
+     */
+    internal class SavedState : BaseSavedState {
+        var mProgress: Int = 0
+        var mMaxProgress: Int = 0
+
+        @ColorInt
+        var mLineReachedColor: Int = 0
+
+        @ColorInt
+        var mLineUnreachedColor: Int = 0
+
+        @Px
+        var mLineHeight: Int = 0
+        var mLineCornerUsed: Boolean = false
+        var mProgressTextVisibility: Boolean = false
+        var mProgressTextSize: Int = 0
+        var mProgressTextColor: Int = 0
+        var mProgressTextPrefix: String = ""
+        var mProgressTextSuffix: String = ""
+
+        constructor(superState: Parcelable?) : super(superState)
+
+        private constructor(source: Parcel) : super(source) {
+            mProgress = source.readInt()
+            mMaxProgress = source.readInt()
+            mLineReachedColor = source.readInt()
+            mLineUnreachedColor = source.readInt()
+            mLineHeight = source.readInt()
+            mLineCornerUsed = source.readInt() != 0
+            mProgressTextVisibility = source.readInt() != 0
+            mProgressTextSize = source.readInt()
+            mProgressTextColor = source.readInt()
+            mProgressTextPrefix = source.readString() ?: ""
+            mProgressTextSuffix = source.readString() ?: ""
+        }
+
+        override fun writeToParcel(parcel: Parcel, flags: Int) {
+            super.writeToParcel(parcel, flags)
+            parcel.writeInt(mProgress)
+            parcel.writeInt(mMaxProgress)
+            parcel.writeInt(mLineReachedColor)
+            parcel.writeInt(mLineUnreachedColor)
+            parcel.writeInt(mLineHeight)
+            parcel.writeInt(if (mLineCornerUsed) 1 else 0)
+            parcel.writeInt(if (mProgressTextVisibility) 1 else 0)
+            parcel.writeInt(mProgressTextSize)
+            parcel.writeInt(mProgressTextColor)
+            parcel.writeString(mProgressTextPrefix)
+            parcel.writeString(mProgressTextSuffix)
+        }
+
+        companion object CREATOR : Parcelable.Creator<SavedState> {
+            override fun createFromParcel(parcel: Parcel): SavedState {
+                return SavedState(parcel)
+            }
+
+            override fun newArray(size: Int): Array<SavedState?> {
+                return arrayOfNulls(size)
+            }
+        }
+    }
 }
