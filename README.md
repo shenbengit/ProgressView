@@ -54,13 +54,13 @@ dependencies {
     lpv.setLineCornerUsed(lineCornerUsed: Boolean)//true:带圆角,false:不带圆角
     lpv.setProgressTextVisibility(isVisible: Boolean)//true:显示进度条上文字,false:不显示进度条上文字
     lpv.setProgressTextSize(textSize: Int)//文字textSize
-    lpv.setProgressTextTypeface(typeface: Typeface?)//
+    lpv.setProgressTextTypeface(typeface: Typeface?)
     lpv.setProgressTextColor(textColor: Int)//文字textSize
     lpv.setProgressTextPrefix(prefix: String?)//文字前缀
     lpv.setProgressTextSuffix(suffix: String?)//文字后缀
     lpv.getReachedPaint()//获取画笔
-    lpv.getUnreachedPaint()/获取画笔
-    lpv.getTextPaint()/获取画笔
+    lpv.getUnreachedPaint()//获取画笔
+    lpv.getTextPaint()//获取画笔
     //添加进度回调监听
     lpv.setOnProgressListener(object : OnProgressListener {
        override fun onProgressChanged(current: Int, max: Int, percentage: Int) {
