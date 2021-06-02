@@ -119,6 +119,10 @@ class LineProgressView @JvmOverloads constructor(
      */
     private val mUnreachedArcRectF by lazy { RectF() }
 
+    private val mReachedRectF = RectF()
+
+    private val mUnreachedRectF = RectF()
+
     /**
      * reached area paint
      */
@@ -215,17 +219,36 @@ class LineProgressView @JvmOverloads constructor(
         setMeasuredDimension(widthSize, heightSize)
     }
 
+    override fun getSuggestedMinimumWidth(): Int {
+        val text = "$mProgressTextPrefix$ONE_HUNDRED_PERCENT$mProgressTextSuffix"
+        val measureText = mTextPaint.measureText(text)
+        return measureText.toInt()
+    }
+
+    override fun getSuggestedMinimumHeight(): Int {
+        val text = "$mProgressTextPrefix$ONE_HUNDRED_PERCENT$mProgressTextSuffix"
+        val rect = Rect()
+        mTextPaint.getTextBounds(text, 0, text.length, rect)
+        return rect.height().coerceAtLeast(mLineHeight)
+    }
+
     override fun onDraw(canvas: Canvas?) {
         if (canvas == null) {
             return
         }
         val percentage = mProgress / mMaxProgress.toFloat()
-        if (mLineCornerUsed) {
-            //draw with corner
-            drawWithCorner(canvas, percentage)
+//        if (mLineCornerUsed) {
+//            //draw with corner
+//            drawWithCorner(canvas, percentage)
+//        } else {
+//            //draw without corner
+//            drawWithoutCorner(canvas, percentage)
+//        }
+
+        if (mProgressTextVisibility) {
+            drawWithProgressText(canvas, percentage)
         } else {
-            //draw without corner
-            drawWithoutCorner(canvas, percentage)
+            drawWithoutProgressText(canvas, percentage)
         }
         mListener?.onProgressChanged(
             mProgress,
@@ -270,7 +293,7 @@ class LineProgressView @JvmOverloads constructor(
             mUnreachedPaint.color = mLineUnreachedColor
             mTextPaint.textSize = mProgressTextSize.toFloat()
             mTextPaint.color = mProgressTextColor
-
+            invalidate()
         } else {
             super.onRestoreInstanceState(state)
         }
@@ -439,18 +462,6 @@ class LineProgressView @JvmOverloads constructor(
 
     fun getTextPaint() = mTextPaint
 
-    override fun getSuggestedMinimumWidth(): Int {
-        val text = "$mProgressTextPrefix$ONE_HUNDRED_PERCENT$mProgressTextSuffix"
-        val measureText = mTextPaint.measureText(text)
-        return measureText.toInt()
-    }
-
-    override fun getSuggestedMinimumHeight(): Int {
-        val text = "$mProgressTextPrefix$ONE_HUNDRED_PERCENT$mProgressTextSuffix"
-        val rect = Rect()
-        mTextPaint.getTextBounds(text, 0, text.length, rect)
-        return rect.height().coerceAtLeast(mLineHeight)
-    }
 
     /**
      * measure size
@@ -583,6 +594,8 @@ class LineProgressView @JvmOverloads constructor(
             }
             //draw progress text
             canvas.drawText(drawText, drawTextStart, baseLine, mTextPaint)
+        } else {
+
         }
 
         //draw reached area
@@ -602,6 +615,151 @@ class LineProgressView @JvmOverloads constructor(
                 drawAreBottom,
                 mUnreachedPaint
             )
+        }
+    }
+
+    private fun drawWithProgressText(canvas: Canvas, percentage: Float) {
+        val realWidth = getRealWidth()
+        val realHeight = getRealHeight()
+        val reachedWidth = realWidth * percentage
+        val middle = paddingTop + realHeight.toFloat() / 2
+        val drawAreaTop = middle - mLineHeight.toFloat() / 2
+        val drawAreBottom = drawAreaTop + mLineHeight
+        var drawReachedAreaEnd = getStartAfterPadding() + reachedWidth
+
+        val baseLine = middle - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)
+        val drawText =
+            "$mProgressTextPrefix${(percentage * ONE_HUNDRED_PERCENT).toInt()}$mProgressTextSuffix"
+        val progressTextWidth = mTextPaint.measureText(drawText)
+        var drawTextStart = drawReachedAreaEnd
+
+        var needDrawUnreachedArea = true
+
+        if (mLineCornerUsed) {
+            val radius = mLineHeight.toFloat() / 2
+            mReachedArcRectF.set(
+                getStartAfterPadding().toFloat(),
+                middle - radius,
+                getStartAfterPadding() + radius * 2,
+                middle + radius
+            )
+            mUnreachedArcRectF.set(
+                getEndAfterPadding() - radius * 2,
+                middle - radius,
+                getEndAfterPadding().toFloat(),
+                middle + radius
+            )
+            val needDrawReachedRectangle = reachedWidth > radius
+            val arcReachedAngle =
+                if (needDrawReachedRectangle) 180f else 180f - (radius - reachedWidth) / radius * 180f
+
+            canvas.drawArc(
+                mReachedArcRectF,
+                180f - arcReachedAngle / 2,
+                arcReachedAngle,
+                false,
+                mReachedPaint
+            )
+
+            if (drawTextStart + progressTextWidth >= getEndAfterPadding()) {
+                drawTextStart = getEndAfterPadding() - progressTextWidth
+                drawReachedAreaEnd = drawTextStart
+                needDrawUnreachedArea = false
+            }
+            if (needDrawReachedRectangle) {
+                mReachedRectF.set(
+                    getStartAfterPadding() + radius,
+                    drawAreaTop,
+                    drawReachedAreaEnd,
+                    drawAreBottom
+                )
+                canvas.drawRect(mReachedRectF, mReachedPaint)
+            }
+            canvas.drawText(drawText, drawTextStart, baseLine, mTextPaint)
+            if (needDrawUnreachedArea) {
+                val needDrawUnreachedRectangle =
+                    getEndAfterPadding() - (drawTextStart + progressTextWidth) > radius
+
+                if (needDrawUnreachedRectangle) {
+                    canvas.drawRect(
+                        drawTextStart + progressTextWidth,
+                        drawAreaTop,
+                        getEndAfterPadding() - radius,
+                        drawAreBottom,
+                        mUnreachedPaint
+                    )
+                }
+                val arcUnreachedAngle =
+                    if (needDrawUnreachedRectangle) 180f else 180f - (radius - (getEndAfterPadding() - (drawTextStart + progressTextWidth))) / radius * 180f
+
+                canvas.drawArc(
+                    mUnreachedArcRectF,
+                    0f - arcUnreachedAngle / 2,
+                    arcUnreachedAngle,
+                    false,
+                    mUnreachedPaint
+                )
+            }
+        } else {
+            if (drawTextStart + progressTextWidth >= getEndAfterPadding()) {
+                drawTextStart = getEndAfterPadding() - progressTextWidth
+                drawReachedAreaEnd = drawTextStart
+                needDrawUnreachedArea = false
+            }
+            mReachedRectF.set(
+                getStartAfterPadding().toFloat(),
+                drawAreaTop,
+                drawReachedAreaEnd,
+                drawAreBottom
+            )
+            canvas.drawRect(mReachedRectF, mReachedPaint)
+            canvas.drawText(drawText, drawTextStart, baseLine, mTextPaint)
+            if (needDrawUnreachedArea) {
+                mUnreachedRectF.set(
+                    drawTextStart + progressTextWidth,
+                    drawAreaTop,
+                    getEndAfterPadding().toFloat(),
+                    drawAreBottom
+                )
+                canvas.drawRect(mUnreachedRectF, mUnreachedPaint)
+            }
+        }
+    }
+
+    private fun drawWithoutProgressText(canvas: Canvas, percentage: Float) {
+        val realWidth = getRealWidth()
+        val realHeight = getRealHeight()
+        val reachedWidth = realWidth * percentage
+        val middle = paddingTop + realHeight.toFloat() / 2
+        val drawAreaTop = middle - mLineHeight.toFloat() / 2
+        val drawAreBottom = drawAreaTop + mLineHeight
+        val drawReachedAreaEnd = getStartAfterPadding() + reachedWidth
+
+        mReachedRectF.set(
+            getStartAfterPadding().toFloat(),
+            drawAreaTop,
+            drawReachedAreaEnd,
+            drawAreBottom
+        )
+        if (mLineCornerUsed) {
+            mUnreachedRectF.set(
+                getStartAfterPadding().toFloat(),
+                drawAreaTop,
+                getEndAfterPadding().toFloat(),
+                drawAreBottom
+            )
+            val radius = mLineHeight.toFloat() / 2
+            canvas.drawRoundRect(mUnreachedRectF, radius, radius, mUnreachedPaint)
+            canvas.drawRoundRect(mReachedRectF, radius, radius, mReachedPaint)
+        } else {
+            mUnreachedRectF.set(
+                mReachedRectF.right,
+                drawAreaTop,
+                getEndAfterPadding().toFloat(),
+                drawAreBottom
+            )
+            canvas.drawRect(mUnreachedRectF, mUnreachedPaint)
+            canvas.drawRect(mReachedRectF, mReachedPaint)
         }
     }
 

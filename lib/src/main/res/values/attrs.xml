@@ -15,7 +15,6 @@
         <attr name="lpv_progress_text_visibility" format="boolean" />
         <attr name="lpv_progress_text_size" format="dimension" />
         <attr name="lpv_progress_text_color" format="color" />
-        <attr name="lpv_progress_text_offset" format="dimension" />
         <attr name="lpv_progress_text_prefix" format="string|reference" />
         <attr name="lpv_progress_text_suffix" format="string|reference" />
 
