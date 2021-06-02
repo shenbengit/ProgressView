@@ -2,7 +2,7 @@
 自定义ProgressView，包括：直线进度条
 
 ## 效果展示
-<img src="" alt="动图演示效果" width="250px">
+<img src="https://github.com/shenbengit/ProgressView/blob/master/screenshots/LineProgressView.gif" alt="动图演示效果" width="250px">
 
 ## 引入
 
@@ -35,8 +35,8 @@ dependencies {
         app:lpv_line_reached_color="#2BB4FF"
         app:lpv_line_unreached_color="#C9C9C9"
         app:lpv_line_height="5dp"
-        app:lpv_line_corner_used="false"
-        app:lpv_progress_text_visibility="true"
+        app:lpv_line_corner_used="true|false"
+        app:lpv_progress_text_visibility="true|false"
         app:lpv_progress_text_size="12sp"
         app:lpv_progress_text_color="#2BB4FF"
         app:lpv_progress_text_prefix=""
