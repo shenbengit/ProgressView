@@ -12,7 +12,7 @@ import android.view.View
  * @date    2021/05/17 10:18
  * @email   714081644@qq.com
  */
-class CircleProgressView @JvmOverloads constructor(
+private class CircleProgressView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0

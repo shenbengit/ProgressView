@@ -237,13 +237,6 @@ class LineProgressView @JvmOverloads constructor(
             return
         }
         val percentage = mProgress / mMaxProgress.toFloat()
-//        if (mLineCornerUsed) {
-//            //draw with corner
-//            drawWithCorner(canvas, percentage)
-//        } else {
-//            //draw without corner
-//            drawWithoutCorner(canvas, percentage)
-//        }
 
         if (mProgressTextVisibility) {
             drawWithProgressText(canvas, percentage)
@@ -462,7 +455,6 @@ class LineProgressView @JvmOverloads constructor(
 
     fun getTextPaint() = mTextPaint
 
-
     /**
      * measure size
      * @param measureSpec
@@ -477,144 +469,6 @@ class LineProgressView @JvmOverloads constructor(
         } else {
             val padding = if (isWidth) paddingStart + paddingEnd else paddingTop + paddingBottom
             (if (isWidth) suggestedMinimumWidth else suggestedMinimumHeight).plus(padding)
-        }
-    }
-
-    private fun drawWithCorner(canvas: Canvas, percentage: Float) {
-        val realWidth = getRealWidth()
-        val realHeight = getRealHeight()
-        val reachedWidth = realWidth * percentage
-        val middle = paddingTop + realHeight.toFloat() / 2
-        val drawAreaTop = middle - mLineHeight.toFloat() / 2
-        val drawAreBottom = drawAreaTop + mLineHeight
-        var drawReachedAreaEnd = getStartAfterPadding() + reachedWidth
-        // arc radius
-        val radius = mLineHeight.toFloat() / 2
-        mReachedArcRectF.set(
-            getStartAfterPadding().toFloat(),
-            middle - radius,
-            getStartAfterPadding() + radius * 2,
-            middle + radius
-        )
-        mUnreachedArcRectF.set(
-            getEndAfterPadding() - radius * 2,
-            middle - radius,
-            getEndAfterPadding().toFloat(),
-            middle + radius
-        )
-
-        val needDrawReachedRectangle = reachedWidth > radius
-        val arcReachedAngle =
-            if (needDrawReachedRectangle) 180f else 180f - (radius - reachedWidth) / radius * 180f
-
-        canvas.drawArc(
-            mReachedArcRectF,
-            180f - arcReachedAngle / 2,
-            arcReachedAngle,
-            false,
-            mReachedPaint
-        )
-
-        //draw progress text
-        var drawTextStart = drawReachedAreaEnd
-        var measureTextWidth = 0f
-        var needDrawUnreachedArea = true
-        if (mProgressTextVisibility) {
-            val drawText =
-                "$mProgressTextPrefix${(percentage * ONE_HUNDRED_PERCENT).toInt()}$mProgressTextSuffix"
-            measureTextWidth = mTextPaint.measureText(drawText)
-            val baseLine = middle - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)
-            if (drawTextStart + measureTextWidth >= getEndAfterPadding()) {
-                drawTextStart = getEndAfterPadding() - measureTextWidth
-                drawReachedAreaEnd = drawTextStart
-                needDrawUnreachedArea = false
-            }
-            //draw progress text
-            canvas.drawText(drawText, drawTextStart, baseLine, mTextPaint)
-        }
-        if (needDrawReachedRectangle) {
-            canvas.drawRect(
-                getStartAfterPadding() + radius,
-                drawAreaTop,
-                drawReachedAreaEnd,
-                drawAreBottom,
-                mReachedPaint
-            )
-        }
-        if (needDrawUnreachedArea) {
-            val needDrawUnreachedRectangle =
-                getEndAfterPadding() - (drawTextStart + measureTextWidth) > radius
-
-            if (needDrawUnreachedRectangle) {
-                canvas.drawRect(
-                    drawTextStart + measureTextWidth,
-                    drawAreaTop,
-                    getEndAfterPadding() - radius,
-                    drawAreBottom,
-                    mUnreachedPaint
-                )
-            }
-            val arcUnreachedAngle =
-                if (needDrawUnreachedRectangle) 180f else 180f - (radius - (getEndAfterPadding() - (drawTextStart + measureTextWidth))) / radius * 180f
-
-            canvas.drawArc(
-                mUnreachedArcRectF,
-                0f - arcUnreachedAngle / 2,
-                arcUnreachedAngle,
-                false,
-                mUnreachedPaint
-            )
-        }
-    }
-
-    private fun drawWithoutCorner(canvas: Canvas, percentage: Float) {
-        val realWidth = getRealWidth()
-        val realHeight = getRealHeight()
-
-        val middle = paddingTop + realHeight.toFloat() / 2
-        val drawAreaTop = middle - mLineHeight.toFloat() / 2
-        val drawAreBottom = drawAreaTop + mLineHeight
-
-        val drawReachedAreaStart = getStartAfterPadding().toFloat()
-        var drawReachedAreaEnd = drawReachedAreaStart + realWidth * percentage
-
-        var drawTextStart = drawReachedAreaEnd
-        var measureTextWidth = 0f
-        var needDrawUnreachedArea = true
-
-        if (mProgressTextVisibility) {
-            val drawText =
-                "$mProgressTextPrefix${(percentage * ONE_HUNDRED_PERCENT).toInt()}$mProgressTextSuffix"
-            measureTextWidth = mTextPaint.measureText(drawText)
-            val baseLine = middle - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)
-            if (drawTextStart + measureTextWidth >= getEndAfterPadding()) {
-                drawTextStart = getEndAfterPadding() - measureTextWidth
-                drawReachedAreaEnd = drawTextStart
-                needDrawUnreachedArea = false
-            }
-            //draw progress text
-            canvas.drawText(drawText, drawTextStart, baseLine, mTextPaint)
-        } else {
-
-        }
-
-        //draw reached area
-        canvas.drawRect(
-            drawReachedAreaStart,
-            drawAreaTop,
-            drawReachedAreaEnd,
-            drawAreBottom,
-            mReachedPaint
-        )
-        //draw unreached area
-        if (needDrawUnreachedArea) {
-            canvas.drawRect(
-                drawTextStart + measureTextWidth,
-                drawAreaTop,
-                getEndAfterPadding().toFloat(),
-                drawAreBottom,
-                mUnreachedPaint
-            )
         }
     }
 
