@@ -16,10 +16,10 @@ allprojects {
 }
 ```
 ### 添加依赖
-[![](https://jitpack.io/v/shenbengit/LoadingDialog.svg)](https://jitpack.io/#shenbengit/LoadingDialog)
+[![](https://jitpack.io/v/shenbengit/ProgressView.svg)](https://jitpack.io/#shenbengit/ProgressView)
 ```gradle
 dependencies {
-    
+    implementation 'com.github.shenbengit:ProgressView:Tag'
 }
 ```
 
