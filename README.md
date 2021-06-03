@@ -1,5 +1,5 @@
 # ProgressView
-自定义ProgressView，包括：直线进度条
+自定义ProgressBar，包括：直线进度条
 
 ## 引入
 ### 将JitPack存储库添加到您的项目中(项目根目录下build.gradle文件)
