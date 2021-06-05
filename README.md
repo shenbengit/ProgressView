@@ -46,6 +46,7 @@ dependencies {
 代码事例
 ```kotlin
     val lpv: LineProgressView = findViewById(R.id.lpv)
+    
     lpv.setProgress(progress: Int)//设置当前进度
     lpv.setMaxProgress(maxProgress: Int)//设置最大进度
     lpv.setLineReachedColor(color: Int)//进度条进度部分显示的颜色
@@ -61,6 +62,14 @@ dependencies {
     lpv.getReachedPaint()//获取画笔
     lpv.getUnreachedPaint()//获取画笔
     lpv.getTextPaint()//获取画笔
+    
+    lpv.setProgressWithAnimation(progress: Int, duration: Long, timeInterpolator: TimeInterpolator?)//通过动画的方式设置进度
+    lpv.cancelProgressAnimation()
+    lpv.resumeProgressAnimation()
+    lpv.pauseProgressAnimation()
+    lpv.isProgressAnimatorRunning()
+    lpv.isProgressAnimatorPaused()
+    
     //添加进度回调监听
     lpv.setOnProgressListener(object : OnProgressListener {
        override fun onProgressChanged(current: Int, max: Int, percentage: Int) {
