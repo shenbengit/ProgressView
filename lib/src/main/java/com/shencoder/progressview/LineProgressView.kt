@@ -1,10 +1,13 @@
 package com.shencoder.progressview
 
+import android.animation.TimeInterpolator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.AttributeSet
+import android.util.Log
 import android.view.AbsSavedState
 import android.view.View
 import androidx.annotation.*
@@ -137,6 +140,15 @@ class LineProgressView @JvmOverloads constructor(
      * text paint
      */
     private val mTextPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private val mValueAnimator = ValueAnimator().apply {
+        addUpdateListener {
+            val animatedValue = it.animatedValue
+            if (animatedValue is Int) {
+                setProgress(animatedValue, true)
+            }
+        }
+    }
 
     private var mListener: OnProgressListener? = null
 
@@ -292,6 +304,15 @@ class LineProgressView @JvmOverloads constructor(
         }
     }
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        mValueAnimator.run {
+            removeAllUpdateListeners()
+            removeAllListeners()
+            cancel()
+        }
+    }
+
     fun setOnProgressListener(listener: OnProgressListener?) {
         mListener = listener
     }
@@ -305,12 +326,66 @@ class LineProgressView @JvmOverloads constructor(
     }
 
     /**
+     * set progress with animation
+     * @param progress progress
+     * @param duration The length of the animation, in milliseconds. This value cannot be negative.
+     * @param timeInterpolator the interpolator to be used by this animation.
+     * @see [setProgress]
+     */
+    fun setProgressWithAnimation(
+        @IntRange(from = 0) progress: Int,
+        @IntRange(from = 0) duration: Long = 1000L,
+        timeInterpolator: TimeInterpolator? = null
+    ) {
+        if (mProgress == progress) {
+            return
+        }
+        mValueAnimator.run {
+            if (isRunning) {
+                cancel()
+            }
+            interpolator = timeInterpolator
+            setIntValues(mProgress, progress)
+            this.duration = duration
+            start()
+        }
+    }
+
+    fun cancelProgressAnimation() {
+        mValueAnimator.cancel()
+    }
+
+    fun resumeProgressAnimation() {
+        mValueAnimator.resume()
+    }
+
+    fun pauseProgressAnimation() {
+        mValueAnimator.pause()
+    }
+
+    fun isProgressAnimatorRunning() = mValueAnimator.isRunning
+
+    fun isProgressAnimatorPaused() = mValueAnimator.isPaused
+
+    /**
      * set progress
+     * when [ValueAnimator.isRunning] is true ,This method will not work.
+     *
      * @param progress should be in [0..mMaxProgress]
+     * @see mValueAnimator
      */
     @UiThread
     fun setProgress(@IntRange(from = 0) progress: Int) {
+        setProgress(progress, false)
+    }
+
+    @UiThread
+    private fun setProgress(@IntRange(from = 0) progress: Int, isFromAnimator: Boolean) {
         if (mProgress == progress) {
+            return
+        }
+        if (isFromAnimator.not() && mValueAnimator.isRunning) {
+            Log.w(TAG, "setProgress failed, because valueAnimator isRunning.")
             return
         }
         mProgress = when {
