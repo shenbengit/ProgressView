@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <declare-styleable name="CircleProgressView">
+    <declare-styleable name="BaseCircleProgressView">
+
+        <attr name="cpv_progress_text_visibility" format="boolean" />
+        <attr name="cpv_progress_text_size" format="dimension" />
+        <attr name="cpv_progress_text_color" format="color" />
+        <attr name="cpv_progress_text_prefix" format="string|reference" />
+        <attr name="cpv_progress_text_suffix" format="string|reference" />
+
+        <attr name="cpv_progress_view_style" format="enum">
+            <enum name="ring" value="1" />
+            <enum name="scale" value="2" />
+            <enum name="wave" value="3" />
+        </attr>
+
 
     </declare-styleable>
     <declare-styleable name="LineProgressView">
